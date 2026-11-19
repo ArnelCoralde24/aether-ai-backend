@@ -5,8 +5,12 @@ export function validateActions(actionPlan) {
         return [{ type: "wander" }];
     }
 
-    return actionPlan.actions.filter(action => {
-        if (!action || typeof action.type !== "string") return false;
-        return ALLOWED_ACTIONS.includes(action.type.toLowerCase());
-    });
+    const validActions = actionPlan.actions
+        .filter((action) => action && typeof action.type === "string" && ALLOWED_ACTIONS.includes(action.type.toLowerCase()))
+        .map((action) => ({
+            type: action.type.toLowerCase(),
+            ...(action.target ? { target: String(action.target) } : {})
+        }));
+
+    return validActions.length > 0 ? validActions : [{ type: "wander" }];
 }
