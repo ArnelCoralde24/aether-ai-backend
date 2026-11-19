@@ -17,7 +17,7 @@ app.post("/api/aether/brain", async (req, res) => {
     try {
         const { entityId, playerMessage, worldState, selectedModel } = req.body;
 
-        
+        // Save incoming context to short-term memory
         saveShortTermMemory(entityId, worldState);
 
         const promptText = `
@@ -33,14 +33,18 @@ app.post("/api/aether/brain", async (req, res) => {
         }
         `;
 
+        // Ipasa ang selectedModel (Gemini, Grok, o OpenRouter model string) papunta sa provider router
+        const modelResult = await queryAIModel(promptText, selectedModel || "gemini-2.5-flash");
         
-        const aiResponse = await queryAIModel(promptText, selectedModel || "gemini-2.5-flash");
-        
-        
+        // Kunin ang data mula sa naging tagumpay na AI model
+        let aiResponse = modelResult.data;
+
+        // Validate actions for absolute security
         aiResponse.actions = validateActions(aiResponse);
 
         res.json({
             success: true,
+            source: modelResult.source,
             data: aiResponse
         });
     } catch (error) {
