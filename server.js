@@ -13,18 +13,27 @@ app.use(cors());
 
 const PORT = process.env.PORT || 3000;
 
+app.get("/api/aether/brain", (req, res) => {
+    res.json({
+        success: true,
+        companion: "Aether",
+        providers: ["gemini", "grok", "openrouter"]
+    });
+});
+
 app.post("/api/aether/brain", async (req, res) => {
     try {
-        const { entityId, playerMessage, worldState, selectedModel } = req.body;
+        const { entityId, playerMessage, worldState, selectedModel, provider } = req.body;
 
-        // Save incoming context to short-term memory
         saveShortTermMemory(entityId, worldState);
+        const recentMemory = getShortTermMemory ? getShortTermMemory(entityId) : null;
 
         const promptText = `
         You are Aether, an autonomous AI player teammate in Minecraft Bedrock.
-        Current World State: ${JSON.stringify(worldState)}
-        Player Message/Command: "${playerMessage || 'None'}"
-        
+        Current World State: ${JSON.stringify(worldState || {})}
+        Recent Memory: ${JSON.stringify(recentMemory || [])}
+        Player Message/Command: "${playerMessage || "None"}"
+
         Respond ONLY in valid JSON format matching this schema:
         {
             "message": "Short dialogue response to the player",
@@ -33,18 +42,23 @@ app.post("/api/aether/brain", async (req, res) => {
         }
         `;
 
-        // Ipasa ang selectedModel (Gemini, Grok, o OpenRouter model string) papunta sa provider router
-        const modelResult = await queryAIModel(promptText, selectedModel || "gemini-2.5-flash");
-        
-        // Kunin ang data mula sa naging tagumpay na AI model
-        let aiResponse = modelResult.data;
+        const modelResult = await queryAIModel(
+            promptText,
+            selectedModel || "gemini-2.5-flash",
+            provider || "gemini"
+        );
 
-        // Validate actions for absolute security
+        let aiResponse = modelResult?.data || {
+            message: "Handa na ako, tuloy lang tayo sa laro.",
+            goal: "follow",
+            actions: [{ type: "follow" }]
+        };
+
         aiResponse.actions = validateActions(aiResponse);
 
         res.json({
             success: true,
-            source: modelResult.source,
+            source: modelResult?.source || "fallback",
             data: aiResponse
         });
     } catch (error) {
